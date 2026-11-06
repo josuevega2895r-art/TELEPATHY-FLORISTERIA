@@ -1,0 +1,13 @@
+{
+  "name": "telephaty-monorepo",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "web",
+    "mobile"
+  ],
+  "scripts": {
+    "bd:iniciar": "mysql -u ${MYSQLUSER:-root} -p${MYSQLPASSWORD:-root} -h ${MYSQLHOST:-127.0.0.1} ${MYSQLDATABASE:-telephaty} < database/schema.mysql.sql",
+    "test": "npm --prefix backend test"
+  }
+}

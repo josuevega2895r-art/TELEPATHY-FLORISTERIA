@@ -1,0 +1,2 @@
+ALTER TABLE usuarios
+  MODIFY COLUMN telefono VARCHAR(15) NOT NULL;
