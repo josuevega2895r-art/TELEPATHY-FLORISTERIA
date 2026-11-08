@@ -26,7 +26,7 @@ Se requieren **dos frontends** consumiendo el **mismo backend**. React (web) y R
 | Frontend Web         | React + Vite + React Router                      |
 | Frontend APK         | React Native + Expo                              |
 | Testing              | Jest + Supertest (backend)                       |
-| Hosting              | Railway (servicios: `api`, `web` y `MySQL`)      |
+| Hosting              | Railway (`api` y `MySQL`); Vercel (`web`)        |
 
 **Qué se comparte entre web y APK:**
 
@@ -44,7 +44,7 @@ Se requieren **dos frontends** consumiendo el **mismo backend**. React (web) y R
 
 **Despliegue en Railway:**
 
-- Un proyecto de Railway con tres servicios: `MySQL` (base de datos), `api` (carpeta `backend/`) y `web` (carpeta `web/`, build de Vite servido como sitio estático).
+- Un proyecto de Railway con dos servicios: `MySQL` (base de datos) y `api` (carpeta `backend/`). La web se publica en Vercel desde `web/`, con build `npm run build`, salida `dist` y `VITE_API_URL` apuntando a la URL pública de `api` terminada en `/api`.
 - El backend lee la conexión desde variables de entorno (`MYSQLHOST`, `MYSQLPORT`, `MYSQLUSER`, `MYSQLPASSWORD`, `MYSQLDATABASE`), más `JWT_SECRET` y `PORT`. Nunca se guardan credenciales en el repositorio.
 - El esquema y los datos iniciales se cargan juntos con `npm run bd:iniciar` desde `database/schema.mysql.sql`.
 - La app móvil apunta a la URL pública del servicio `api` mediante `API_URL` en `app.config.js`.
@@ -109,10 +109,16 @@ Reglas de registro adicionales:
 ## Implementación web actual
 
 - Registro de clientes con teléfono de El Salvador (`+503` y ocho dígitos locales) e inicio de sesión JWT por rol.
+- La navegación web usa React Router; las vistas internas conservan rutas directas y `web/vercel.json` redirige el historial de rutas a la SPA.
 - Después del ingreso, el administrador inicia en Dashboard y el cliente en Catálogo.
 - El cliente puede solicitar un ramo personalizado indicando ocasión, preferencias, presupuesto opcional, destinatario y fecha. La solicitud queda en Mis pedidos con estado `Solicitud recibida`, pendiente de cotización.
 - La confirmación de un pedido estándar muestra una factura interna con códigos de factura/pedido/producto, comprador y correo, precio, entrega y pago. Puede imprimirse o guardarse como PDF; no es factura electrónica DTE.
 - La base MySQL usa `MYSQLDATABASE`; el archivo `database/schema.mysql.sql` contiene esquema y seed. El seed inicial se omite si ya existe `RAM-001` para conservar los ramos existentes.
 - Para desarrollo local se usa `backend/.env.example` como plantilla; en Railway los valores reales se configuran como variables del servicio. Comandos disponibles en backend: `npm run db:check` y `npm run seed:admin`.
+- La pantalla de pedidos permite avanzar estados, asignar repartidor y registrar la recepción; las operaciones se conectan a las rutas protegidas de la API.
 
-Las reglas RS-01 a RS-08 y las funciones de historial, reseñas, fechas especiales, cambios de estado, entregas y reportes detallados siguen siendo requisitos del sistema; no se consideran implementadas si aún no tienen ruta y flujo de interfaz conectados.
+## Implementación móvil actual
+
+- Aplicación Expo independiente con navegación inferior para cliente y administrador, almacenamiento JWT en `expo-secure-store`, catálogo, pedidos, alta de pedido, inventario, reportes y perfil.
+- `API_URL` debe apuntar al servicio público de Railway terminado en `/api`; `mobile/.env.example` contiene solo una URL marcadora.
+- Las funciones móviles no cubiertas por las pantallas actuales (por ejemplo, cámara para confirmación, alta de fechas especiales, reseñas, moderación, edición de empleados, filtros y reportes adicionales) siguen pendientes de interfaz aunque la API ya exponga sus rutas.

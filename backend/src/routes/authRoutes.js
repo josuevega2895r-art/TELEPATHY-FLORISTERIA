@@ -7,7 +7,13 @@ const { fnConsultar, fnEjecutar, fnUsarDatosLocales } = require('../config/db');
 const router = express.Router();
 const usuariosLocales = [];
 
-const fnGenerarToken = (usuario) => jwt.sign({ id: usuario.id_usuario, rol: usuario.rol, correo: usuario.correo }, JWT_SECRET, { expiresIn: '8h' });
+const fnGenerarToken = (usuario) => jwt.sign({
+  id: usuario.id_usuario,
+  rol: usuario.rol,
+  correo: usuario.correo,
+  nombre: usuario.nombre,
+  apellidos: usuario.apellidos
+}, JWT_SECRET, { expiresIn: '8h' });
 
 const usuarioLocal = {
   id_usuario: 1,
@@ -95,7 +101,7 @@ router.post('/login', async (req, res) => {
         return res.status(401).json({ error: 'Credenciales incorrectas.' });
       }
 
-      const payload = { id: usuario.id_usuario, rol: usuario.rol, correo: usuario.correo };
+      const payload = { id: usuario.id_usuario, rol: usuario.rol, correo: usuario.correo, nombre: usuario.nombre, apellidos: usuario.apellidos };
       return res.json({ token: jwt.sign(payload, JWT_SECRET, { expiresIn: '8h' }), usuario: { id_usuario: usuario.id_usuario, nombre: usuario.nombre, apellidos: usuario.apellidos, rol: usuario.rol, correo: usuario.correo } });
     }
 
@@ -110,7 +116,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Credenciales incorrectas.' });
     }
 
-    const payload = { id: usuario.id_usuario, rol: usuario.rol, correo: usuario.correo };
+    const payload = { id: usuario.id_usuario, rol: usuario.rol, correo: usuario.correo, nombre: usuario.nombre, apellidos: usuario.apellidos };
     return res.json({ token: jwt.sign(payload, JWT_SECRET, { expiresIn: '8h' }), usuario: { id_usuario: usuario.id_usuario, nombre: usuario.nombre, apellidos: usuario.apellidos, rol: usuario.rol, correo: usuario.correo } });
   } catch (error) {
     return res.status(500).json({ error: 'Error al iniciar sesión.' });

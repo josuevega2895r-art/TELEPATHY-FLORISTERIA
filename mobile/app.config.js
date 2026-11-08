@@ -4,7 +4,8 @@ module.exports = {
     slug: 'telephaty-mobile',
     version: '1.0.0',
     extra: {
-      apiUrl: process.env.API_URL || 'http://localhost:4000/api'
-    }
+      apiUrl: process.env.API_URL || process.env.EXPO_PUBLIC_API_URL || ''
+    },
+    plugins: ['expo-secure-store']
   }
 };

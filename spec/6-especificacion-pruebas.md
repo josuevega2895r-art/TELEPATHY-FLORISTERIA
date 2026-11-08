@@ -50,21 +50,20 @@
 | POST   | /api/empleados                        | Administrador       | Crear empleado                                                     |
 | PUT    | /api/empleados/:id                    | Administrador       | Editar empleado                                                    |
 
-## Endpoints implementados actualmente
+## Endpoints implementados en la API
 
-| Método | Ruta                         | Rol                         | Comportamiento actual |
-| ------ | ---------------------------- | --------------------------- | --------------------- |
-| POST   | /api/auth/registro           | Público                     | Registra clientes; valida teléfono `+503` + 8 dígitos. |
-| POST   | /api/auth/login              | Público                     | Devuelve JWT con rol y datos de usuario. |
-| GET    | /api/categorias              | Público                     | Devuelve categorías. |
-| GET    | /api/ramos                   | Público                     | Devuelve catálogo y soporta filtros por categoría/precio. |
-| GET    | /api/pedidos                 | Cliente / Administrador     | Cliente: sus pedidos y solicitudes; administrador: todos. Pedidos confirmados incluyen datos para factura. |
-| POST   | /api/pedidos                 | Cliente / Administrador     | Crea pedido estándar y devuelve pedido más factura interna imprimible como PDF. |
-| POST   | /api/pedidos/personalizados  | Cliente                     | Guarda solicitud con ocasión, descripción, presupuesto opcional, destinatario y fecha. |
-| GET    | /api/inventario              | Administrador               | Lee stock de flores. |
-| PATCH  | /api/inventario/:id          | Administrador               | Actualiza existencias. |
-| POST   | /api/ramos                   | Administrador               | Crea un ramo en el catálogo. |
-| GET    | /api/salud                   | Público                     | Estado del servicio. |
+| Grupo | Rutas | Comportamiento |
+| ----- | ----- | -------------- |
+| Salud y acceso | `GET /api/salud`, `POST /api/auth/registro`, `POST /api/auth/login` | Salud del servicio, registro salvadoreño `+503` y JWT por rol. |
+| Catálogo | `GET /api/categorias`, `GET /api/ramos`, `GET /api/ramos/:id`, `POST /api/ramos`, `PUT /api/ramos/:id`, `PATCH /api/ramos/:id/activo` | Consulta, filtros, disponibilidad y administración transaccional de ramos y recetas. |
+| Pedidos | `GET /api/zonas`, `GET/POST /api/pedidos`, `GET /api/pedidos/:id`, `PATCH /api/pedidos/:id/estado`, `/cancelar`, `/pago`, `POST /api/pedidos/personalizados` | Filtrado, RS-01 a RS-05, descuento del primer pedido, costos por zona, seguimiento, cancelación con motivo y pagos sin cobro. |
+| Entregas | `GET /api/entregas`, `PATCH /api/entregas/:id` | Consulta de entregas pendientes/próximas, asignación de repartidor, salida, recepción y foto. |
+| Inventario | `GET/POST /api/flores`, `PUT /api/flores/:id`, `GET/POST /api/inventario`, `PATCH /api/inventario/:id`, `POST /api/mermas` | Consulta y actualización de existencias; registro transaccional de mermas. |
+| Reseñas | `GET /api/ramos/:id/resenas`, `POST /api/resenas`, `PATCH /api/resenas/:id/visible` | Reseñas visibles; RS-07, máximo una por cliente y ramo y moderación administrativa. |
+| Datos de cliente | `GET/POST /api/fechas-especiales`, `DELETE /api/fechas-especiales/:id`, `GET /api/notificaciones`, `PATCH /api/notificaciones/:id/leida` | Fechas propias del cliente y notificaciones protegidas por usuario. |
+| Administración | `GET /api/reportes/ventas`, `/top-ramos`, `/categorias`, `/mermas`; `GET/POST /api/empleados`, `PUT /api/empleados/:id` | Reportes y gestión de empleados protegidos por rol administrador. |
+
+Las operaciones que modifican varios registros usan transacciones y las consultas usan parámetros. Las tareas diarias se programan con `node-cron` para avisos de stock bajo, pedidos sin iniciar próximos a la entrega y fechas especiales. El modo local de prueba solo emula los flujos que tienen datos de respaldo; rutas que requieren MySQL devuelven 503 explícito en lugar de simular un resultado.
 
 La factura se consulta dentro de la respuesta de creación y de la lista de pedidos; no existe una ruta independiente de factura. La solicitud personalizada permanece como “Solicitud recibida” hasta cotizarse y no genera una factura de compra.
 
@@ -82,7 +81,7 @@ telephaty/
 
 ## Pruebas automatizadas actuales (Jest + Supertest)
 
-Ejecutar con `npm --prefix backend test`. La suite actual tiene nueve pruebas de API sobre login, registro +503, categorías, pedidos/factura, solicitudes personalizadas, inventario y catálogo. Usa el fallback local si no se configuran variables MySQL para pruebas.
+Ejecutar con `npm --prefix backend test`. La suite actual tiene doce pruebas de API sobre login, registro +503, categorías, pedidos/factura, solicitudes personalizadas, inventario, catálogo, autorización, horario de entrega y máximo de cinco pedidos activos por cliente. `NODE_ENV=test` fuerza el respaldo local para no acceder a Railway.
 
 Casos cubiertos actualmente:
 
@@ -92,8 +91,10 @@ Casos cubiertos actualmente:
 - Creación/listado de pedido y contenido de factura.
 - Creación de solicitud personalizada y aparición en Mis pedidos.
 - Ajuste de inventario y creación de ramo.
+- Rechazo de rutas administrativas para clientes y de recursos autenticados sin sesión.
+- Rechazo de entregas fuera del horario permitido y del sexto pedido activo por cliente.
 
-La tabla siguiente conserva los casos de aceptación pendientes; no implica que esas rutas o flujos ya estén implementados.
+La tabla siguiente conserva casos de aceptación pendientes o con cobertura parcial; no implica que todas esas rutas o flujos estén automatizados.
 
 | ID    | Caso                                                                    | Resultado esperado                                        |
 | ----- | ----------------------------------------------------------------------- | --------------------------------------------------------- |
@@ -101,7 +102,6 @@ La tabla siguiente conserva los casos de aceptación pendientes; no implica que 
 | PR-02 | Login con credenciales correctas e incorrectas                          | 200 con JWT y rol / 401                                   |
 | PR-03 | Cliente intenta crear un ramo                                           | 403 (RS-06)                                               |
 | PR-04 | Crear pedido válido                                                     | 201; totales correctos; entrega creada                    |
-| PR-05 | Crear el sexto pedido activo de un cliente                              | 409 (RS-01)                                               |
 | PR-06 | Crear pedido con entrega a menos de 2 horas o fuera de horario          | 400 (RS-02)                                               |
 | PR-07 | Crear pedido de un ramo sin flores suficientes                          | 409 (RS-04)                                               |
 | PR-08 | Primer pedido de un cliente                                             | Descuento del 10% aplicado (RS-08)                        |

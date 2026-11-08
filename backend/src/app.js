@@ -7,6 +7,7 @@ dotenv.config();
 const authRoutes = require('./routes/authRoutes');
 const catalogRoutes = require('./routes/catalogRoutes');
 const businessRoutes = require('./routes/businessRoutes');
+const specRoutes = require('./routes/specRoutes');
 
 const app = express();
 app.use(cors());
@@ -19,6 +20,7 @@ app.get('/api/salud', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api', catalogRoutes);
 app.use('/api', businessRoutes);
+app.use('/api', specRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Ruta no encontrada.' });

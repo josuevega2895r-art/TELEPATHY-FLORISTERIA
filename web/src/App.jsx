@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, Printer, Settings } from 'lucide-react';
+import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -43,10 +43,12 @@ function fnCoincideBusqueda(termino, ...valores) {
 const adminNavItems = ['Dashboard', 'Pedidos', 'Catálogo', 'Inventario', 'Entregas', 'Reportes'];
 const clientNavItems = ['Catálogo', 'Mis pedidos'];
 
-const defaultLogin = { correo: 'admin@telephaty.com', contrasena: '12345678' };
+const defaultLogin = { correo: '', contrasena: '' };
 const defaultRegister = { nombre: '', apellidos: '', telefono: '', correo: '', direccion: '', contrasena: '' };
 
 function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [usuario, setUsuario] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('telephaty_user') || 'null');
@@ -55,7 +57,17 @@ function App() {
       return { nombre: 'Admin', rol: 'administrador' };
     }
   });
-  const [activeView, setActiveView] = useState(usuario.rol === 'cliente' ? 'Catálogo' : 'Dashboard');
+  const rutasVista = {
+    '/dashboard': 'Dashboard',
+    '/pedidos': 'Pedidos',
+    '/catalogo': 'Catálogo',
+    '/inventario': 'Inventario',
+    '/entregas': 'Entregas',
+    '/reportes': 'Reportes',
+    '/busqueda': 'Búsqueda'
+  };
+  const rutasNombre = Object.fromEntries(Object.entries(rutasVista).map(([ruta, vista]) => [vista, ruta]));
+  const [activeView, setActiveViewState] = useState(() => rutasVista[location.pathname] || (usuario.rol === 'cliente' ? 'Catálogo' : 'Dashboard'));
   const [catalogo, setCatalogo] = useState([]);
   const [login, setLogin] = useState(defaultLogin);
   const [registro, setRegistro] = useState(defaultRegister);
@@ -67,6 +79,16 @@ function App() {
       return false;
     }
   });
+
+  const fnCambiarVista = (vista) => {
+    setActiveViewState(vista);
+    navigate(rutasNombre[vista] || (usuario.rol === 'cliente' ? '/catalogo' : '/dashboard'));
+  };
+
+  useEffect(() => {
+    const vistaRuta = rutasVista[location.pathname];
+    if (vistaRuta && vistaRuta !== activeView) setActiveViewState(vistaRuta);
+  }, [location.pathname]);
 
   useEffect(() => {
     const cargarCatalogo = async () => {
@@ -112,8 +134,9 @@ function App() {
         rol: data.usuario.rol || 'administrador'
       };
       setUsuario(usuarioSesion);
-      setActiveView(usuarioSesion.rol === 'administrador' ? 'Dashboard' : 'Catálogo');
+      fnCambiarVista(usuarioSesion.rol === 'administrador' ? 'Dashboard' : 'Catálogo');
       setIsLoggedIn(true);
+      setLogin(defaultLogin);
       localStorage.setItem('telephaty_token', data.token);
       localStorage.setItem('telephaty_user', JSON.stringify(usuarioSesion));
     } catch (error) {
@@ -147,7 +170,7 @@ function App() {
         rol: data.usuario.rol || 'cliente'
       };
       setUsuario(usuarioSesion);
-      setActiveView('Catálogo');
+      fnCambiarVista('Catálogo');
       setIsLoggedIn(true);
       localStorage.setItem('telephaty_token', data.token);
       localStorage.setItem('telephaty_user', JSON.stringify(usuarioSesion));
@@ -160,39 +183,44 @@ function App() {
     localStorage.removeItem('telephaty_token');
     localStorage.removeItem('telephaty_user');
     setIsLoggedIn(false);
+    setLogin(defaultLogin);
     setUsuario({ nombre: 'Admin', rol: 'administrador' });
-    setActiveView('Dashboard');
+    fnCambiarVista('Dashboard');
     setError('');
   };
 
-  if (!isLoggedIn) {
-    return (
-      <LoginScreen
-        login={login}
-        setLogin={setLogin}
-        registro={registro}
-        setRegistro={setRegistro}
-        error={error}
-        onSubmit={fnIniciarSesion}
-        onRegister={fnRegistrarCuenta}
-      />
-    );
-  }
-
   return (
-    <DashboardLayout
-      usuario={usuario}
-      activeView={activeView}
-      setActiveView={setActiveView}
-      onLogout={fnCerrarSesion}
-      catalogo={catalogo}
-      setCatalogo={setCatalogo}
-    />
+    <Routes>
+      <Route
+        path="*"
+        element={isLoggedIn ? (
+          <DashboardLayout
+            usuario={usuario}
+            activeView={activeView}
+            setActiveView={fnCambiarVista}
+            onLogout={fnCerrarSesion}
+            catalogo={catalogo}
+            setCatalogo={setCatalogo}
+          />
+        ) : (
+          <LoginScreen
+            login={login}
+            setLogin={setLogin}
+            registro={registro}
+            setRegistro={setRegistro}
+            error={error}
+            onSubmit={fnIniciarSesion}
+            onRegister={fnRegistrarCuenta}
+          />
+        )}
+      />
+    </Routes>
   );
 }
 
 function LoginScreen({ login, setLogin, registro, setRegistro, error, onSubmit, onRegister }) {
   const [showRegistration, setShowRegistration] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <div className="auth-screen">
@@ -252,7 +280,18 @@ function LoginScreen({ login, setLogin, registro, setRegistro, error, onSubmit, 
             </label>
             <label>
               Contraseña
-              <input required type="password" autoComplete="new-password" minLength={8} value={registro.contrasena} onChange={(event) => setRegistro((prev) => ({ ...prev, contrasena: event.target.value }))} />
+              <span className="password-input-wrap">
+                <input required type={showPassword ? 'text' : 'password'} autoComplete="new-password" minLength={8} value={registro.contrasena} onChange={(event) => setRegistro((prev) => ({ ...prev, contrasena: event.target.value }))} />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  aria-pressed={showPassword}
+                  onClick={() => setShowPassword((visible) => !visible)}
+                >
+                  <span>{showPassword ? 'Ocultar' : 'Mostrar'}</span>
+                </button>
+              </span>
             </label>
             {error && <div className="error-box">{error}</div>}
             <button type="submit" className="btn btn-primary btn-block">Crear cuenta</button>
@@ -266,19 +305,30 @@ function LoginScreen({ login, setLogin, registro, setRegistro, error, onSubmit, 
                 autoComplete="email"
                 value={login.correo}
                 onChange={(event) => setLogin((prev) => ({ ...prev, correo: event.target.value }))}
-                placeholder="admin@telephaty.com"
+                placeholder="nombre@correo.com"
               />
             </label>
 
             <label>
               Contraseña
-              <input
-                type="password"
-                autoComplete="current-password"
-                value={login.contrasena}
-                onChange={(event) => setLogin((prev) => ({ ...prev, contrasena: event.target.value }))}
-                placeholder="••••••••"
-              />
+              <span className="password-input-wrap">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  value={login.contrasena}
+                  onChange={(event) => setLogin((prev) => ({ ...prev, contrasena: event.target.value }))}
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  aria-pressed={showPassword}
+                  onClick={() => setShowPassword((visible) => !visible)}
+                >
+                  <span>{showPassword ? 'Ocultar' : 'Mostrar'}</span>
+                </button>
+              </span>
             </label>
 
             {error && <div className="error-box">{error}</div>}
@@ -429,6 +479,76 @@ function DashboardLayout({ usuario, activeView, setActiveView, onLogout, catalog
       setDialog({ type: 'custom-success', solicitud: resultado.solicitud });
     } catch (error) {
       setDialogError(error.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const fnRecargarPedidos = async () => {
+    setPedidos(await fnSolicitarApi('/pedidos'));
+  };
+
+  const fnCambiarEstadoPedido = async (pedido, estado, datos = {}) => {
+    setDialogError('');
+    setIsSaving(true);
+    try {
+      await fnSolicitarApi(`/pedidos/${pedido.id_pedido}/estado`, {
+        method: 'PATCH',
+        body: JSON.stringify({ estado, ...datos })
+      });
+      await fnRecargarPedidos();
+      setDialog(null);
+    } catch (requestError) {
+      setDialogError(requestError.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const fnAsignarRepartidor = async (pedido, idRepartidor) => {
+    setDialogError('');
+    setIsSaving(true);
+    try {
+      if (!pedido.id_entrega) throw new Error('Este pedido no tiene una entrega a domicilio asociada.');
+      await fnSolicitarApi(`/entregas/${pedido.id_entrega}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ idRepartidor: Number(idRepartidor) })
+      });
+      await fnRecargarPedidos();
+      setDialog(null);
+    } catch (requestError) {
+      setDialogError(requestError.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const fnCancelarPedido = async (pedido) => {
+    if (!window.confirm(`¿Cancelar el pedido ${pedido.codigo || `PED-${pedido.id_pedido}`}?`)) return;
+    try {
+      await fnSolicitarApi(`/pedidos/${pedido.id_pedido}/cancelar`, {
+        method: 'PATCH',
+        body: JSON.stringify({})
+      });
+      await fnRecargarPedidos();
+    } catch (requestError) {
+      setDialogError(requestError.message);
+      setDialog({ type: 'error' });
+    }
+  };
+
+  const fnCancelarPedidoAdmin = async (pedido, motivo) => {
+    setDialogError('');
+    setIsSaving(true);
+    try {
+      await fnSolicitarApi(`/pedidos/${pedido.id_pedido}/cancelar`, {
+        method: 'PATCH',
+        body: JSON.stringify({ motivo })
+      });
+      await fnRecargarPedidos();
+      setDialog(null);
+    } catch (requestError) {
+      setDialogError(requestError.message);
     } finally {
       setIsSaving(false);
     }
@@ -610,7 +730,10 @@ function DashboardLayout({ usuario, activeView, setActiveView, onLogout, catalog
                 aria-controls="notifications-panel"
                 onClick={(event) => fnToggleUtilityPanel('notifications', event)}
               >
-                <Bell size={19} strokeWidth={1.8} aria-hidden="true" />
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+                  <path d="M10 21h4" />
+                </svg>
                 {visibleNotifications.length > 0 && <span className="notification-badge">{visibleNotifications.length}</span>}
               </button>
               {activeUtilityPanel === 'notifications' && (
@@ -659,7 +782,10 @@ function DashboardLayout({ usuario, activeView, setActiveView, onLogout, catalog
                 aria-controls="settings-panel"
                 onClick={(event) => fnToggleUtilityPanel('settings', event)}
               >
-                <Settings size={19} strokeWidth={1.8} aria-hidden="true" />
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.7a8 8 0 0 1-1.7 1l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.7-1l-1.7.7-1.4-2.4 1.4-1.1a8 8 0 0 1 0-2l-1.4-1.1 1.4-2.4 1.7.7a8 8 0 0 1 1.7-1l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.7 1l1.7-.7 1.4 2.4-1.4 1.1a8 8 0 0 1 0 2Z" transform="translate(-1.5 -1.5) scale(1.125)" />
+                </svg>
               </button>
               {activeUtilityPanel === 'settings' && (
                 <aside className="utility-popover settings-popover" id="settings-panel" aria-label="Configuración" style={{ '--utility-popover-top': `${utilityPopoverTop}px` }}>
@@ -702,7 +828,7 @@ function DashboardLayout({ usuario, activeView, setActiveView, onLogout, catalog
           <div className="view-transition" key={activeView}>
             {activeView === 'Búsqueda' && <BuscadorView pedidos={pedidosFiltrados} catalogo={catalogoFiltrado} inventario={inventarioFiltrado} isAdmin={esAdministrador} onView={setActiveView} />}
             {activeView === 'Dashboard' && <DashboardView pedidos={pedidosFiltrados} inventario={inventarioFiltrado} catalogoCount={catalogoFiltrado.length} onExport={fnExportarPedidos} onViewOrders={() => setActiveView('Pedidos')} onViewInventory={() => setActiveView('Inventario')} />}
-            {activeView === 'Pedidos' && <PedidosView pedidos={pedidosFiltrados} isAdmin={esAdministrador} onCreate={() => fnAbrirPedido()} onExport={fnExportarPedidos} onInvoice={fnAbrirFactura} />}
+            {activeView === 'Pedidos' && <PedidosView pedidos={pedidosFiltrados} isAdmin={esAdministrador} onCreate={() => fnAbrirPedido()} onExport={fnExportarPedidos} onInvoice={fnAbrirFactura} onChangeStatus={(pedido, estado) => fnCambiarEstadoPedido(pedido, estado)} onAssign={(pedido) => { setDialog({ type: 'assign-delivery', pedido }); setDialogError(''); }} onComplete={(pedido) => { setDialog({ type: 'complete-delivery', pedido }); setDialogError(''); }} onCancel={fnCancelarPedido} onAdminCancel={(pedido) => { setDialog({ type: 'cancel-order', pedido }); setDialogError(''); }} />}
             {activeView === 'Catálogo' && <CatalogoView catalogo={catalogoFiltrado} isAdmin={esAdministrador} onCreateProduct={() => { setDialog({ type: 'product' }); setDialogError(''); }} onAddToOrder={fnAbrirPedido} onCustomOrder={() => { setDialog({ type: 'custom-order' }); setDialogError(''); }} />}
             {activeView === 'Inventario' && <InventarioView inventario={inventarioFiltrado} onRefresh={fnRecargarInventario} onUpdate={(flor) => { setDialog({ type: 'stock', flor }); setDialogError(''); }} onCreate={() => { setDialog({ type: 'flower' }); setDialogError(''); }} isAdmin={usuario.rol === 'administrador'} />}
             {activeView === 'Entregas' && <EntregasView pedidos={pedidosFiltrados} />}
@@ -717,6 +843,10 @@ function DashboardLayout({ usuario, activeView, setActiveView, onLogout, catalog
         {dialog?.type === 'product' && <AppDialog title="Agregar producto" onClose={() => setDialog(null)}><ProductoForm error={dialogError} isSaving={isSaving} onSubmit={fnCrearProducto} /></AppDialog>}
         {dialog?.type === 'stock' && <AppDialog title={`Ajustar stock: ${dialog.flor.nombre}`} onClose={() => setDialog(null)}><StockForm flor={dialog.flor} error={dialogError} isSaving={isSaving} onSubmit={fnActualizarStock} /></AppDialog>}
         {dialog?.type === 'flower' && <AppDialog title="Agregar al inventario" onClose={() => setDialog(null)}><FlorForm error={dialogError} isSaving={isSaving} onSubmit={fnCrearFlor} /></AppDialog>}
+        {dialog?.type === 'assign-delivery' && <AppDialog title="Asignar repartidor" onClose={() => setDialog(null)}><RepartidorForm error={dialogError} isSaving={isSaving} onSubmit={(idRepartidor) => fnAsignarRepartidor(dialog.pedido, idRepartidor)} /></AppDialog>}
+        {dialog?.type === 'complete-delivery' && <AppDialog title="Confirmar entrega" onClose={() => setDialog(null)}><EntregaForm error={dialogError} isSaving={isSaving} onSubmit={(datos) => fnCambiarEstadoPedido(dialog.pedido, 'E', datos)} /></AppDialog>}
+        {dialog?.type === 'cancel-order' && <AppDialog title="Cancelar pedido" onClose={() => setDialog(null)}><CancelacionForm pedido={dialog.pedido} error={dialogError} isSaving={isSaving} onSubmit={(motivo) => fnCancelarPedidoAdmin(dialog.pedido, motivo)} /></AppDialog>}
+        {dialog?.type === 'error' && <AppDialog title="No se pudo completar la acción" onClose={() => setDialog(null)}><div className="error-box">{dialogError}</div><button type="button" className="btn btn-primary btn-block" onClick={() => setDialog(null)}>Cerrar</button></AppDialog>}
       </main>
     </div>
   );
@@ -890,7 +1020,7 @@ function DashboardView({ pedidos, inventario, catalogoCount, onExport, onViewOrd
   );
 }
 
-function PedidosView({ pedidos, isAdmin, onCreate, onExport, onInvoice }) {
+function PedidosView({ pedidos, isAdmin, onCreate, onExport, onInvoice, onChangeStatus, onAssign, onComplete, onCancel, onAdminCancel }) {
   return (
     <div className="module-block">
       <div className="heading-row">
@@ -921,6 +1051,23 @@ function PedidosView({ pedidos, isAdmin, onCreate, onExport, onInvoice }) {
             </div>
             {!isAdmin && pedido.tipo !== 'personalizado' && pedido.factura && (
               <button type="button" className="btn btn-secondary" onClick={() => onInvoice(pedido.factura)}>Descargar factura en PDF</button>
+            )}
+            {pedido.tipo !== 'personalizado' && isAdmin && (
+              <div className="order-admin-actions">
+                {['P', 'Pendiente'].includes(pedido.estado) && <button type="button" className="btn btn-primary" onClick={() => onChangeStatus(pedido, 'R')}>Iniciar preparación</button>}
+                {['R', 'En preparación'].includes(pedido.estado) && (
+                  pedido.tipo_entrega === 'tienda'
+                    ? <button type="button" className="btn btn-primary" onClick={() => onComplete(pedido)}>Registrar retiro</button>
+                    : pedido.id_repartidor
+                      ? <button type="button" className="btn btn-primary" onClick={() => onChangeStatus(pedido, 'C')}>Enviar en camino</button>
+                      : <button type="button" className="btn btn-secondary" onClick={() => onAssign(pedido)}>Asignar repartidor</button>
+                )}
+                {['C', 'En camino'].includes(pedido.estado) && <button type="button" className="btn btn-primary" onClick={() => onComplete(pedido)}>Confirmar entrega</button>}
+                {!['E', 'Entregado', 'X', 'Cancelado'].includes(pedido.estado) && <button type="button" className="btn btn-secondary" onClick={() => onAdminCancel(pedido)}>Cancelar</button>}
+              </div>
+            )}
+            {pedido.tipo !== 'personalizado' && !isAdmin && ['P', 'Pendiente'].includes(pedido.estado) && (
+              <button type="button" className="btn btn-secondary" onClick={() => onCancel(pedido)}>Cancelar pedido</button>
             )}
           </article>
         ))}
@@ -957,7 +1104,9 @@ function CatalogoView({ catalogo, isAdmin, onCreateProduct, onAddToOrder, onCust
                 </div>
                 <h4>{producto.nombre}</h4>
                 <p>{producto.descripcion || 'Arreglo floral premium para cualquier ocasión.'}</p>
-                <button type="button" className="btn btn-primary btn-small" onClick={() => onAddToOrder(producto.id_ramo)}>Crear pedido</button>
+                <button type="button" className="btn btn-primary btn-small" disabled={producto.disponible === false} onClick={() => onAddToOrder(producto.id_ramo)}>
+                  {producto.disponible === false ? 'Agotado temporalmente' : 'Crear pedido'}
+                </button>
               </div>
             </article>
           );
@@ -1031,7 +1180,30 @@ function EntregasView({ pedidos }) {
 }
 
 function ReportesView({ pedidos, onExport }) {
-  const ingresos = pedidos.reduce((total, pedido) => total + Number(pedido.total || 0), 0);
+  const [periodo, setPeriodo] = useState('mensual');
+  const [reportes, setReportes] = useState({ ventas: [], ramos: [], categorias: [], mermas: [] });
+  const [error, setError] = useState('');
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    let vigente = true;
+    setCargando(true);
+    setError('');
+    Promise.all([
+      fnSolicitarApi(`/reportes/ventas?periodo=${periodo}`),
+      fnSolicitarApi('/reportes/top-ramos'),
+      fnSolicitarApi('/reportes/categorias'),
+      fnSolicitarApi('/reportes/mermas')
+    ]).then(([ventas, ramos, categorias, mermas]) => {
+      if (vigente) setReportes({ ventas, ramos, categorias, mermas });
+    }).catch((requestError) => {
+      if (vigente) setError(requestError.message);
+    }).finally(() => { if (vigente) setCargando(false); });
+    return () => { vigente = false; };
+  }, [periodo]);
+
+  const ingresos = reportes.ventas.reduce((total, fila) => total + Number(fila.ventas || 0), 0);
+  const ventasPedidos = reportes.ventas.reduce((total, fila) => total + Number(fila.pedidos || 0), 0);
   return (
     <div className="module-block">
       <div className="heading-row">
@@ -1039,21 +1211,49 @@ function ReportesView({ pedidos, onExport }) {
           <p className="mini-label">Reportes</p>
           <h2>Indicadores del negocio</h2>
         </div>
-        <button type="button" className="btn btn-secondary" onClick={onExport}>Exportar pedidos CSV</button>
+        <div className="heading-actions">
+          <label className="report-period">Periodo
+            <select value={periodo} onChange={(event) => setPeriodo(event.target.value)}>
+              <option value="mensual">Mensual</option>
+              <option value="trimestral">Trimestral</option>
+              <option value="anual">Anual</option>
+            </select>
+          </label>
+          <button type="button" className="btn btn-secondary" onClick={onExport}>Exportar pedidos CSV</button>
+        </div>
       </div>
+      {error && <div className="error-box">{error}</div>}
+      {cargando && <p className="empty-state">Cargando reportes…</p>}
 
       <div className="stats-grid">
         {[
-          { title: 'Pedidos', value: pedidos.length },
+          { title: 'Pedidos entregados', value: ventasPedidos },
           { title: 'Ingresos registrados', value: `$${ingresos.toFixed(2)}` },
-          { title: 'Ticket promedio', value: `$${pedidos.length ? (ingresos / pedidos.length).toFixed(2) : '0.00'}` }
+          { title: 'Ticket promedio', value: `$${ventasPedidos ? (ingresos / ventasPedidos).toFixed(2) : '0.00'}` }
         ].map((item) => (
           <article key={item.title} className="stat-card panel-card">
             <span>{item.title}</span>
             <strong>{item.value}</strong>
-            <small>Según pedidos registrados</small>
+            <small>Según pedidos entregados en el periodo</small>
           </article>
         ))}
+      </div>
+      <div className="report-lists">
+        <section className="panel-card">
+          <h3>Top de ramos</h3>
+          {reportes.ramos.map((ramo) => <p key={ramo.id_ramo}>{ramo.nombre} · {ramo.unidades} unidades · ${Number(ramo.ventas).toFixed(2)}</p>)}
+          {!reportes.ramos.length && !cargando && <p className="empty-state">Sin ventas entregadas.</p>}
+        </section>
+        <section className="panel-card">
+          <h3>Ventas por categoría</h3>
+          {reportes.categorias.map((categoria) => <p key={categoria.id_categoria}>{categoria.nombre} · ${Number(categoria.ventas).toFixed(2)}</p>)}
+          {!reportes.categorias.length && !cargando && <p className="empty-state">Sin ventas entregadas.</p>}
+        </section>
+        <section className="panel-card">
+          <h3>Mermas registradas</h3>
+          {reportes.mermas.map((merma, indice) => <p key={`${merma.id_flor}-${merma.fecha}-${indice}`}>{merma.nombre} · {merma.cantidad} · {merma.motivo}</p>)}
+          {!reportes.mermas.length && !cargando && <p className="empty-state">Sin mermas registradas.</p>}
+        </section>
       </div>
     </div>
   );
@@ -1133,7 +1333,13 @@ function FacturaView({ factura, onClose }) {
         </div>
       </article>
       <div className="invoice-actions">
-        <button type="button" className="btn btn-primary" onClick={() => window.print()}><Printer size={16} aria-hidden="true" /> Imprimir / Guardar PDF</button>
+        <button type="button" className="btn btn-primary" onClick={() => window.print()}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+            <path d="M6 14h12v8H6zM18 12h.01" />
+          </svg>
+          Imprimir / Guardar PDF
+        </button>
         <button type="button" className="btn btn-secondary" onClick={onClose}>Listo</button>
       </div>
     </>
@@ -1156,7 +1362,9 @@ function PedidoForm({ catalogo, initialProduct, error, isSaving, onSubmit }) {
         telefono: datos.get('telefono'),
         direccion: datos.get('direccion'),
         dedicatoria: datos.get('dedicatoria'),
-        metodoPago: datos.get('metodoPago')
+        metodoPago: datos.get('metodoPago'),
+        tipoEntrega: datos.get('tipoEntrega'),
+        idZona: Number(datos.get('idZona'))
       });
     }}>
       <label>
@@ -1171,12 +1379,16 @@ function PedidoForm({ catalogo, initialProduct, error, isSaving, onSubmit }) {
         <label>Fecha de entrega<input name="fechaEntrega" type="date" min={fechaMinima} required /></label>
       </div>
       <div className="dialog-fields-row">
-        <label>Hora de entrega<input name="horaEntrega" type="time" required /></label>
+        <label>Hora de entrega<input name="horaEntrega" type="time" min="08:00" max="20:00" required /></label>
         <label>Método de pago<select name="metodoPago" defaultValue="efectivo"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="tarjeta">Tarjeta</option></select></label>
+      </div>
+      <div className="dialog-fields-row">
+        <label>Tipo de entrega<select name="tipoEntrega" defaultValue="domicilio"><option value="domicilio">A domicilio</option><option value="tienda">Retiro en tienda</option></select></label>
+        <label>Zona<select name="idZona" defaultValue="1"><option value="1">San Salvador · $3</option><option value="2">Área metropolitana · $5</option></select></label>
       </div>
       <label>Nombre del destinatario<input name="destinatario" autoComplete="name" required /></label>
       <label>Teléfono<input name="telefono" type="tel" autoComplete="tel" required /></label>
-      <label>Dirección de entrega<input name="direccion" autoComplete="street-address" required /></label>
+      <label>Dirección de entrega (si es a domicilio)<input name="direccion" autoComplete="street-address" /></label>
       <label>Dedicatoria<textarea name="dedicatoria" rows="2" maxLength="300" /></label>
       {error && <div className="error-box">{error}</div>}
       <button type="submit" className="btn btn-primary btn-block" disabled={isSaving}>{isSaving ? 'Guardando...' : 'Confirmar pedido'}</button>
@@ -1250,6 +1462,48 @@ function FlorForm({ error, isSaving, onSubmit }) {
       <label>Costo unitario<input name="costo_unitario" type="number" min="0" step="0.01" required /></label>
       {error && <div className="error-box">{error}</div>}
       <button type="submit" className="btn btn-primary btn-block" disabled={isSaving}>{isSaving ? 'Guardando...' : 'Agregar al inventario'}</button>
+    </form>
+  );
+}
+
+function RepartidorForm({ error, isSaving, onSubmit }) {
+  return (
+    <form className="dialog-form" onSubmit={(event) => {
+      event.preventDefault();
+      onSubmit(new FormData(event.currentTarget).get('idRepartidor'));
+    }}>
+      <label>ID del empleado repartidor<input name="idRepartidor" type="number" min="1" step="1" required /></label>
+      {error && <div className="error-box">{error}</div>}
+      <button type="submit" className="btn btn-primary btn-block" disabled={isSaving}>{isSaving ? 'Asignando...' : 'Asignar repartidor'}</button>
+    </form>
+  );
+}
+
+function EntregaForm({ error, isSaving, onSubmit }) {
+  return (
+    <form className="dialog-form" onSubmit={(event) => {
+      event.preventDefault();
+      const datos = new FormData(event.currentTarget);
+      onSubmit({ recibidoPor: datos.get('recibidoPor'), fotoConfirmacion: datos.get('fotoConfirmacion') || null });
+    }}>
+      <label>Nombre de quien recibe<input name="recibidoPor" required maxLength="100" /></label>
+      <label>Foto de confirmación (URL opcional)<input name="fotoConfirmacion" type="url" /></label>
+      {error && <div className="error-box">{error}</div>}
+      <button type="submit" className="btn btn-primary btn-block" disabled={isSaving}>{isSaving ? 'Guardando...' : 'Registrar entrega'}</button>
+    </form>
+  );
+}
+
+function CancelacionForm({ pedido, error, isSaving, onSubmit }) {
+  const requiereMotivo = !['P', 'Pendiente'].includes(pedido.estado);
+  return (
+    <form className="dialog-form" onSubmit={(event) => {
+      event.preventDefault();
+      onSubmit(new FormData(event.currentTarget).get('motivo'));
+    }}>
+      <label>Motivo {requiereMotivo ? '' : '(opcional)'}<textarea name="motivo" rows="3" maxLength="200" required={requiereMotivo} /></label>
+      {error && <div className="error-box">{error}</div>}
+      <button type="submit" className="btn btn-primary btn-block" disabled={isSaving}>{isSaving ? 'Cancelando...' : 'Confirmar cancelación'}</button>
     </form>
   );
 }

@@ -1,7 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700&family=Playfair+Display:wght@600;700&display=swap');
+
 :root {
   font-family: 'Nunito Sans', sans-serif;
-  color: #201d1b;
-  background: #f7f1ee;
+  color: #2b2a29;
+  background: #fff9f5;
   line-height: 1.5;
   font-weight: 400;
   --green: #2e4a3b;
@@ -9,12 +11,12 @@
   --pink: #d9788f;
   --peach: #f2a68b;
   --gold: #c9a25a;
-  --cream: #fffaf7;
-  --text: #201d1b;
-  --muted: #6a5d5a;
+  --cream: #fff9f5;
+  --text: #2b2a29;
+  --muted: #6f6865;
   --line: rgba(46, 74, 59, 0.1);
-  --success: #4a8a5c;
-  --warning: #d8a437;
+  --success: #4f8a5b;
+  --warning: #e0a93b;
   --error: #c2453d;
 }
 
@@ -23,7 +25,7 @@ html { scroll-behavior: smooth; }
 body {
   margin: 0;
   min-height: 100vh;
-  background: linear-gradient(180deg, #f8f3f0 0%, #f5efee 100%);
+  background: linear-gradient(180deg, #fff9f5 0%, #f6e8e4 100%);
   color: var(--text);
 }
 
@@ -220,7 +222,7 @@ h1, h2, h3, h4, p { margin: 0; }
 }
 
 .utility-heading h3 {
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
   font-size: 1.35rem;
 }
 
@@ -471,7 +473,7 @@ h1, h2, h3, h4, p { margin: 0; }
 
 .heading-row h2,
 .heading-row h3 {
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
   font-size: clamp(1.8rem, 2vw, 2.4rem);
 }
 
@@ -643,7 +645,7 @@ th {
 }
 
 .search-results-section h3 {
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
   font-size: 1.3rem;
 }
 
@@ -748,7 +750,7 @@ th {
 }
 
 .dialog-header h2 {
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
   font-size: 1.65rem;
 }
 
@@ -836,7 +838,7 @@ th {
 }
 
 .invoice-brand strong {
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
   font-size: 1.3rem;
 }
 
@@ -958,9 +960,57 @@ th {
   gap: 12px;
 }
 
+.order-admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.order-admin-actions .btn {
+  flex: 1 1 160px;
+}
+
+.report-lists {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.report-lists > section {
+  padding: 18px;
+}
+
+.report-lists h3 {
+  margin-bottom: 12px;
+  color: var(--green-dark);
+}
+
+.report-lists p {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.report-period {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.report-period select {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 9px 10px;
+  color: var(--text);
+}
+
 .module-card h3 {
   font-size: 1.3rem;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
 }
 
 .module-card p,
@@ -1004,7 +1054,7 @@ th {
 
 .product-body h4 {
   font-size: 1.35rem;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
 }
 
 .product-body p {
@@ -1074,7 +1124,7 @@ th {
 }
 
 .auth-brand h1 {
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
   font-size: 2.2rem;
 }
 
@@ -1084,7 +1134,7 @@ th {
 
 .auth-header h2 {
   font-size: 2rem;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
 }
 
 .auth-fields-row {
@@ -1113,6 +1163,40 @@ th {
   border-radius: 12px;
   padding: 12px 14px;
   background: #fff;
+}
+
+.password-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrap input {
+  padding-right: 100px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--green);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.password-toggle:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
 }
 
 .phone-input-row {

@@ -74,7 +74,7 @@ describe('API de Telephaty', () => {
       });
 
     expect(response.status).toBe(201);
-    expect(response.body.pedido.total).toBe(64);
+    expect(response.body.pedido.total).toBe(60.6);
     expect(response.body.factura).toMatchObject({
       numeroFactura: `FAC-${response.body.pedido.id_pedido}`,
       codigoPedido: response.body.pedido.codigo,
@@ -86,7 +86,7 @@ describe('API de Telephaty', () => {
       metodoPago: 'efectivo',
       compradorNombre: 'Cliente de prueba',
       compradorCorreo: 'admin@telephaty.com',
-      total: 64
+      total: 60.6
     });
 
     const lista = await request(app)
@@ -162,5 +162,86 @@ describe('API de Telephaty', () => {
 
     expect(response.status).toBe(201);
     expect(response.body.ramo.codigo).toBe(codigo);
+  });
+
+  test('Las nuevas rutas protegen recursos y acciones administrativas', async () => {
+    const cliente = await request(app)
+      .post('/api/auth/registro')
+      .send({
+        nombre: 'Cliente',
+        apellidos: 'Permisos',
+        telefono: '+50371234567',
+        correo: `permisos-${Date.now()}@telephaty.test`,
+        contrasena: 'ClaveSegura123'
+      });
+
+    const sinSesion = await request(app).get('/api/zonas');
+    expect(sinSesion.status).toBe(401);
+
+    const restringido = await request(app)
+      .get('/api/flores')
+      .set('Authorization', `Bearer ${cliente.body.token}`);
+    expect(restringido.status).toBe(403);
+  });
+
+  test('POST /api/pedidos rechaza entregas fuera del horario permitido', async () => {
+    const sesion = await request(app)
+      .post('/api/auth/login')
+      .send({ correo: 'admin@telephaty.com', contrasena: '12345678' });
+    const response = await request(app)
+      .post('/api/pedidos')
+      .set('Authorization', `Bearer ${sesion.body.token}`)
+      .send({
+        idRamo: 1,
+        cantidad: 1,
+        fechaEntrega: '2030-06-15',
+        horaEntrega: '21:00',
+        destinatario: 'Cliente',
+        telefono: '55512345',
+        direccion: 'Calle de prueba',
+        metodoPago: 'efectivo'
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toContain('08:00 y 20:00');
+  });
+
+  test('POST /api/pedidos aplica el máximo de cinco pedidos activos por cliente', async () => {
+    const registro = await request(app)
+      .post('/api/auth/registro')
+      .send({
+        nombre: 'Cliente',
+        apellidos: 'Pedidos',
+        telefono: '+50371234567',
+        correo: `limite-${Date.now()}@telephaty.test`,
+        contrasena: 'ClaveSegura123'
+      });
+    const datosPedido = {
+      idRamo: 1,
+      cantidad: 1,
+      fechaEntrega: '2030-06-15',
+      horaEntrega: '14:00',
+      destinatario: 'Persona Destinataria',
+      telefono: '55512345',
+      direccion: 'Calle de prueba',
+      metodoPago: 'efectivo'
+    };
+
+    for (let indice = 0; indice < 5; indice += 1) {
+      const pedido = await request(app)
+        .post('/api/pedidos')
+        .set('Authorization', `Bearer ${registro.body.token}`)
+        .send(datosPedido);
+      expect(pedido.status).toBe(201);
+      if (indice === 0) expect(pedido.body.pedido.descuento).toBe(3.2);
+      if (indice > 0) expect(pedido.body.pedido.descuento).toBe(0);
+    }
+
+    const sexto = await request(app)
+      .post('/api/pedidos')
+      .set('Authorization', `Bearer ${registro.body.token}`)
+      .send(datosPedido);
+    expect(sexto.status).toBe(409);
+    expect(sexto.body.error).toContain('5 pedidos activos');
   });
 });

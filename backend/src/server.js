@@ -1,9 +1,11 @@
 const app = require('./app');
+const { fnProgramarAlertasDiarias } = require('./tasks/dailyAlerts');
 
 const PORT = process.env.PORT || 4000;
 
 const server = app.listen(PORT, () => {
   console.log(`Telephaty API escuchando en http://localhost:${PORT}`);
+  if (process.env.NODE_ENV !== 'test') fnProgramarAlertasDiarias();
 });
 
 server.on('error', (error) => {
