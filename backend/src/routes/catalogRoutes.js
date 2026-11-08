@@ -6,7 +6,7 @@ const router = express.Router();
 
 const ramosLocales = [
   { id_ramo: 1, id_categoria: 1, nombre: 'Ramo de Amor', codigo: 'RAM-001', descripcion: 'Ramo romántico con rosas y tulipanes.', precio: 32, costo_empaque: 3.5, imagen: 'https://images.unsplash.com/photo-1525310072745-f49212b5ac6d', activo: 1 },
-  { id_ramo: 2, id_categoria: 1, nombre: 'Bouquet Clásico', codigo: 'RAM-002', descripcion: 'Arreglo clásico para regalar en cualquier ocasión.', precio: 28, costo_empaque: 2.8, imagen: 'https://images.unsplash.com/photo-1468327768560-75b778cbb551', activo: 1 },
+  { id_ramo: 2, id_categoria: 1, nombre: 'Bouquet Clásico', codigo: 'RAM-002', descripcion: 'Arreglo clásico para regalar en cualquier ocasión.', precio: 28, costo_empaque: 2.8, imagen: 'https://raw.githubusercontent.com/josuevega2895r-art/TELEPATHY-FLORISTERIA/master/web/public/images/bouquet-clasico.png', activo: 1 },
   { id_ramo: 3, id_categoria: 5, nombre: 'Caja de regalo', codigo: 'COM-001', descripcion: 'Complemento para entrega premium.', precio: 12, costo_empaque: 1.5, imagen: 'https://images.unsplash.com/photo-1519378058457-4c29a0a2efac', es_complemento: 1, stock: 25, activo: 1 }
 ];
 
