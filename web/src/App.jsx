@@ -69,6 +69,7 @@ function App() {
   const rutasNombre = Object.fromEntries(Object.entries(rutasVista).map(([ruta, vista]) => [vista, ruta]));
   const [activeView, setActiveViewState] = useState(() => rutasVista[location.pathname] || (usuario.rol === 'cliente' ? 'Catálogo' : 'Dashboard'));
   const [catalogo, setCatalogo] = useState([]);
+  const [catalogoCargando, setCatalogoCargando] = useState(true);
   const [login, setLogin] = useState(defaultLogin);
   const [registro, setRegistro] = useState(defaultRegister);
   const [error, setError] = useState('');
@@ -93,18 +94,13 @@ function App() {
   useEffect(() => {
     const cargarCatalogo = async () => {
       try {
-        const [respCategorias, respRamos] = await Promise.all([
-          fetch(`${API_URL}/categorias`),
-          fetch(`${API_URL}/ramos`)
-        ]);
-
-        const categoriasData = await respCategorias.json();
-        const ramosData = await respRamos.json();
-        console.log('cat', categoriasData);
-        console.log('ramos', ramosData);
-        setCatalogo(ramosData);
+        const response = await fetch(`${API_URL}/ramos`);
+        if (!response.ok) throw new Error('No se pudo consultar el catálogo.');
+        setCatalogo(await response.json());
       } catch (error) {
         console.error('Error cargando catálogo', error);
+      } finally {
+        setCatalogoCargando(false);
       }
     };
 
@@ -200,6 +196,7 @@ function App() {
             setActiveView={fnCambiarVista}
             onLogout={fnCerrarSesion}
             catalogo={catalogo}
+            catalogoCargando={catalogoCargando}
             setCatalogo={setCatalogo}
           />
         ) : (
@@ -347,7 +344,7 @@ function LoginScreen({ login, setLogin, registro, setRegistro, error, onSubmit, 
   );
 }
 
-function DashboardLayout({ usuario, activeView, setActiveView, onLogout, catalogo, setCatalogo }) {
+function DashboardLayout({ usuario, activeView, setActiveView, onLogout, catalogo, catalogoCargando, setCatalogo }) {
   const esAdministrador = usuario.rol === 'administrador';
   const menuItems = esAdministrador ? adminNavItems : clientNavItems;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -829,7 +826,7 @@ function DashboardLayout({ usuario, activeView, setActiveView, onLogout, catalog
             {activeView === 'Búsqueda' && <BuscadorView pedidos={pedidosFiltrados} catalogo={catalogoFiltrado} inventario={inventarioFiltrado} isAdmin={esAdministrador} onView={setActiveView} />}
             {activeView === 'Dashboard' && <DashboardView pedidos={pedidosFiltrados} inventario={inventarioFiltrado} catalogoCount={catalogoFiltrado.length} onExport={fnExportarPedidos} onViewOrders={() => setActiveView('Pedidos')} onViewInventory={() => setActiveView('Inventario')} />}
             {activeView === 'Pedidos' && <PedidosView pedidos={pedidosFiltrados} isAdmin={esAdministrador} onCreate={() => fnAbrirPedido()} onExport={fnExportarPedidos} onInvoice={fnAbrirFactura} onChangeStatus={(pedido, estado) => fnCambiarEstadoPedido(pedido, estado)} onAssign={(pedido) => { setDialog({ type: 'assign-delivery', pedido }); setDialogError(''); }} onComplete={(pedido) => { setDialog({ type: 'complete-delivery', pedido }); setDialogError(''); }} onCancel={fnCancelarPedido} onAdminCancel={(pedido) => { setDialog({ type: 'cancel-order', pedido }); setDialogError(''); }} />}
-            {activeView === 'Catálogo' && <CatalogoView catalogo={catalogoFiltrado} isAdmin={esAdministrador} onCreateProduct={() => { setDialog({ type: 'product' }); setDialogError(''); }} onAddToOrder={fnAbrirPedido} onCustomOrder={() => { setDialog({ type: 'custom-order' }); setDialogError(''); }} />}
+            {activeView === 'Catálogo' && <CatalogoView catalogo={catalogoFiltrado} cargando={catalogoCargando} isAdmin={esAdministrador} onCreateProduct={() => { setDialog({ type: 'product' }); setDialogError(''); }} onAddToOrder={fnAbrirPedido} onCustomOrder={() => { setDialog({ type: 'custom-order' }); setDialogError(''); }} />}
             {activeView === 'Inventario' && <InventarioView inventario={inventarioFiltrado} onRefresh={fnRecargarInventario} onUpdate={(flor) => { setDialog({ type: 'stock', flor }); setDialogError(''); }} onCreate={() => { setDialog({ type: 'flower' }); setDialogError(''); }} isAdmin={usuario.rol === 'administrador'} />}
             {activeView === 'Entregas' && <EntregasView pedidos={pedidosFiltrados} />}
             {activeView === 'Reportes' && <ReportesView pedidos={pedidosFiltrados} onExport={fnExportarPedidos} />}
@@ -1077,7 +1074,7 @@ function PedidosView({ pedidos, isAdmin, onCreate, onExport, onInvoice, onChange
   );
 }
 
-function CatalogoView({ catalogo, isAdmin, onCreateProduct, onAddToOrder, onCustomOrder }) {
+function CatalogoView({ catalogo, cargando, isAdmin, onCreateProduct, onAddToOrder, onCustomOrder }) {
   return (
     <div className="module-block">
       <div className="heading-row">
@@ -1096,7 +1093,7 @@ function CatalogoView({ catalogo, isAdmin, onCreateProduct, onAddToOrder, onCust
         {catalogo.map((producto) => {
           return (
             <article key={producto.id_ramo} className="product-card">
-              <img src={producto.imagen || 'https://images.unsplash.com/photo-1525310072745-f49212b5ac6d'} alt={producto.nombre} />
+              <img src={producto.imagen || 'https://images.unsplash.com/photo-1525310072745-f49212b5ac6d?auto=format&fit=crop&w=640&q=75'} alt={producto.nombre} loading="lazy" decoding="async" width="640" height="440" />
               <div className="product-body">
                 <div className="product-meta">
                   <span>{producto.codigo || 'RAM-001'}</span>
@@ -1111,7 +1108,7 @@ function CatalogoView({ catalogo, isAdmin, onCreateProduct, onAddToOrder, onCust
             </article>
           );
         })}
-        {catalogo.length === 0 && <p className="empty-state">No hay productos que coincidan con la búsqueda.</p>}
+        {catalogo.length === 0 && <p className="empty-state">{cargando ? 'Cargando catálogo…' : 'No hay productos que coincidan con la búsqueda.'}</p>}
       </div>
     </div>
   );
