@@ -230,7 +230,7 @@ UNION ALL SELECT 2, 'Orquídea', 'tallo', 40, 10, 1.25, 7 WHERE @telephaty_seed_
 
 INSERT INTO ramos (id_categoria, nombre, codigo, descripcion, precio, costo_empaque, imagen, es_complemento, stock, activo)
 SELECT 1, 'Ramo de Amor', 'RAM-001', 'Ramo romántico con rosas y tulipanes.', 32.00, 3.50, 'https://images.unsplash.com/photo-1525310072745-f49212b5ac6d', 0, NULL, 1 WHERE @telephaty_seed_required
-UNION ALL SELECT 1, 'Bouquet Clásico', 'RAM-002', 'Arreglo clásico para regalar en cualquier ocasión.', 28.00, 2.80, 'https://images.unsplash.com/photo-1468327768560-75b778cbb551', 0, NULL, 1 WHERE @telephaty_seed_required
+UNION ALL SELECT 1, 'Bouquet Clásico', 'RAM-002', 'Arreglo clásico para regalar en cualquier ocasión.', 28.00, 2.80, 'https://raw.githubusercontent.com/josuevega2895r-art/TELEPATHY-FLORISTERIA/master/web/public/images/bouquet-clasico.png', 0, NULL, 1 WHERE @telephaty_seed_required
 UNION ALL SELECT 5, 'Caja de regalo', 'COM-001', 'Complemento para entrega premium.', 12.00, 1.50, 'https://images.unsplash.com/photo-1519378058457-4c29a0a2efac', 1, 25, 1 WHERE @telephaty_seed_required;
 
 INSERT INTO receta_ramos (id_ramo, id_flor, cantidad)
